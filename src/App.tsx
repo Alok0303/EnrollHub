@@ -7,6 +7,8 @@ import { Navbar } from "@/components/Navbar";
 import Index from "./pages/Index";
 import Enroll from "./pages/Enroll";
 import View from "./pages/View";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -21,6 +23,8 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/enroll" element={<Enroll />} />
           <Route path="/view" element={<View />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Wallet } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -7,6 +7,7 @@ import { sepolia } from "viem/chains";
 
 export const Navbar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isWalletConnected, setIsWalletConnected] = useState(false);
   const [address, setAddress] = useState("");
@@ -71,6 +72,25 @@ export const Navbar = () => {
                 ? `Connected: ${address.slice(0, 6)}...${address.slice(-4)}`
                 : "Connect Wallet"}
             </Button>
+            {currentUser ? (
+              <div className="flex items-center gap-3 ml-2">
+                <span className="text-sm text-muted-foreground">
+                  {currentUser.name}
+                </span>
+                <Button
+                  onClick={handleLogout}
+                  variant="ghost"
+                  size="icon"
+                  title="Logout"
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <Link to="/login" className="ml-2">
+                <Button variant="outline">Login</Button>
+              </Link>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -110,6 +130,30 @@ export const Navbar = () => {
               <Wallet className="mr-2 h-4 w-4" />
               {isWalletConnected ? "Wallet Connected" : "Connect Wallet"}
             </Button>
+            {currentUser ? (
+              <>
+                <div className="text-center text-sm text-muted-foreground py-2 border-t">
+                  Logged in as {currentUser.name}
+                </div>
+                <Button
+                  onClick={() => {
+                    handleLogout();
+                    setIsMenuOpen(false);
+                  }}
+                  variant="outline"
+                  className="w-full justify-start"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
+                </Button>
+              </>
+            ) : (
+              <Link to="/login" onClick={() => setIsMenuOpen(false)}>
+                <Button variant="outline" className="w-full justify-start">
+                  Login
+                </Button>
+              </Link>
+            )}
           </div>
         )}
       </div>
