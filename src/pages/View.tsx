@@ -126,6 +126,7 @@ export default function View() {
       return;
     }
     setIsTimerRunning(true);
+
     toast({
       title: "Timer Started",
       description: "Countdown has begun!",
@@ -147,7 +148,7 @@ export default function View() {
           <TableHead>Email</TableHead>
           <TableHead>Age</TableHead>
           <TableHead>Gender</TableHead>
-          <TableHead>PDF File</TableHead>
+          
         </TableRow>
       </TableHeader>
       <TableBody>

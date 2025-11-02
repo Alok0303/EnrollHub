@@ -1,14 +1,17 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Wallet } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createWalletClient, custom } from "viem";
+import { sepolia } from "viem/chains";
 
 export const Navbar = () => {
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isWalletConnected, setIsWalletConnected] = useState(false);
+  const [address, setAddress] = useState("");
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path) => location.pathname === path;
 
   const navLinks = [
     { path: "/", label: "Home" },
@@ -16,9 +19,25 @@ export const Navbar = () => {
     { path: "/view", label: "View" },
   ];
 
-  const handleWalletToggle = () => {
-    setIsWalletConnected(!isWalletConnected);
-  };
+  const connectWallet = async () => {
+  if (!window.ethereum) {
+    alert("Please install MetaMask!");
+    return;
+  }
+
+  // Force MetaMask popup for connection
+  await window.ethereum.request({ method: "eth_requestAccounts" });
+
+  const walletClient = createWalletClient({
+    chain: sepolia,
+    transport: custom(window.ethereum),
+  });
+
+  const accounts = await walletClient.requestAddresses();
+  setAddress(accounts[0]);
+  setIsWalletConnected(true);
+};
+
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
@@ -43,12 +62,14 @@ export const Navbar = () => {
               </Link>
             ))}
             <Button
-              onClick={handleWalletToggle}
+              onClick={connectWallet}
               variant={isWalletConnected ? "default" : "outline"}
               className="ml-4 transition-all"
             >
               <Wallet className="mr-2 h-4 w-4" />
-              {isWalletConnected ? "Wallet Connected" : "Connect Wallet"}
+              {isWalletConnected
+                ? `Connected: ${address.slice(0, 6)}...${address.slice(-4)}`
+                : "Connect Wallet"}
             </Button>
           </div>
 
@@ -65,7 +86,11 @@ export const Navbar = () => {
         {isMenuOpen && (
           <div className="md:hidden py-4 space-y-2">
             {navLinks.map((link) => (
-              <Link key={link.path} to={link.path} onClick={() => setIsMenuOpen(false)}>
+              <Link
+                key={link.path}
+                to={link.path}
+                onClick={() => setIsMenuOpen(false)}
+              >
                 <Button
                   variant={isActive(link.path) ? "secondary" : "ghost"}
                   className="w-full justify-start"
@@ -76,7 +101,7 @@ export const Navbar = () => {
             ))}
             <Button
               onClick={() => {
-                handleWalletToggle();
+                connectWallet();
                 setIsMenuOpen(false);
               }}
               variant={isWalletConnected ? "default" : "outline"}

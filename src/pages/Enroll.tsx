@@ -1,3 +1,4 @@
+"use client";
 import { useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { Upload } from "lucide-react";
+import { getContract, createWalletClient, custom } from "viem";
+import { sepolia } from "viem/chains";
 
 interface EnrollmentData {
   id: string;
@@ -15,7 +17,6 @@ interface EnrollmentData {
   email: string;
   age: string;
   gender: string;
-  pdfFile: string;
   timestamp: number;
 }
 
@@ -27,59 +28,115 @@ export default function Enroll() {
     age: "",
     gender: "",
   });
-  const [pdfFile, setPdfFile] = useState<File | null>(null);
+
+  const ContractAddress = "0xE19b7C663051327aCD91537e71fA1FE2E04De50f";
+  const ContractABI = [
+    {
+      inputs: [],
+      stateMutability: "nonpayable",
+      type: "constructor",
+    },
+    {
+      inputs: [{ internalType: "string", name: "name", type: "string" }],
+      name: "addParticipant",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
+      inputs: [],
+      name: "getGroupA",
+      outputs: [{ internalType: "string[]", name: "", type: "string[]" }],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [],
+      name: "getGroupB",
+      outputs: [{ internalType: "string[]", name: "", type: "string[]" }],
+      stateMutability: "view",
+      type: "function",
+    },
+  ];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      if (file.type === "application/pdf") {
-        setPdfFile(file);
-      } else {
-        toast({
-          title: "Invalid file type",
-          description: "Please upload a PDF file only.",
-          variant: "destructive",
-        });
-      }
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  // ✅ Submit Enrollment (addParticipant)
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.phone || !formData.email || !formData.age || !formData.gender || !pdfFile) {
+    if (!formData.name || !formData.phone || !formData.email || !formData.age || !formData.gender) {
       toast({
         title: "Missing fields",
-        description: "Please fill in all fields and upload a PDF.",
+        description: "Please fill in all fields.",
         variant: "destructive",
       });
       return;
     }
 
-    const enrollmentData: EnrollmentData = {
-      id: Date.now().toString(),
-      ...formData,
-      pdfFile: pdfFile.name,
-      timestamp: Date.now(),
-    };
+    if (!(window as any).ethereum) {
+      toast({
+        title: "Wallet not found",
+        description: "Please install MetaMask first.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    const existingData = localStorage.getItem("enrollments");
-    const enrollments = existingData ? JSON.parse(existingData) : [];
-    enrollments.push(enrollmentData);
-    localStorage.setItem("enrollments", JSON.stringify(enrollments));
+    try {
+      const walletClient = createWalletClient({
+        chain: sepolia,
+        transport: custom((window as any).ethereum),
+      });
 
-    toast({
-      title: "Success!",
-      description: "Your enrollment has been submitted successfully.",
-    });
+      const accounts = await walletClient.requestAddresses();
+      const address = accounts[0];
 
-    setFormData({ name: "", phone: "", email: "", age: "", gender: "" });
-    setPdfFile(null);
-    (e.target as HTMLFormElement).reset();
+      const ContractInstance = getContract({
+        address: ContractAddress,
+        abi: ContractABI,
+        client: walletClient,
+      });
+
+      toast({
+        title: "Transaction started",
+        description: "Please confirm the transaction in MetaMask...",
+      });
+
+      await ContractInstance.write.addParticipant({
+        account: address as `0x${string}`,
+        args: [formData.name],
+      });
+
+      toast({
+        title: "Success 🎉",
+        description: "Your name has been recorded on the blockchain!",
+      });
+
+      // Save locally
+      const enrollmentData: EnrollmentData = {
+        id: Date.now().toString(),
+        ...formData,
+        timestamp: Date.now(),
+      };
+
+      const existingData = localStorage.getItem("enrollments");
+      const enrollments = existingData ? JSON.parse(existingData) : [];
+      enrollments.push(enrollmentData);
+      localStorage.setItem("enrollments", JSON.stringify(enrollments));
+
+      setFormData({ name: "", phone: "", email: "", age: "", gender: "" });
+    } catch (err: any) {
+      console.error(err);
+      toast({
+        title: "Transaction failed",
+        description:
+          "Make sure you have test ETH on Sepolia and the contract address is correct.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -149,7 +206,10 @@ export default function Enroll() {
 
               <div className="space-y-2">
                 <Label htmlFor="gender">Gender</Label>
-                <Select value={formData.gender} onValueChange={(value) => setFormData({ ...formData, gender: value })}>
+                <Select
+                  value={formData.gender}
+                  onValueChange={(value) => setFormData({ ...formData, gender: value })}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select gender" />
                   </SelectTrigger>
@@ -159,26 +219,6 @@ export default function Enroll() {
                     <SelectItem value="other">Other</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="pdf">Upload PDF Document</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="pdf"
-                    type="file"
-                    accept=".pdf"
-                    onChange={handleFileChange}
-                    className="cursor-pointer"
-                    required
-                  />
-                  {pdfFile && (
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <Upload className="h-4 w-4" />
-                      <span className="truncate max-w-[150px]">{pdfFile.name}</span>
-                    </div>
-                  )}
-                </div>
               </div>
 
               <Button type="submit" className="w-full" size="lg">
