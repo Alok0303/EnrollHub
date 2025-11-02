@@ -1,12 +1,22 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Wallet } from "lucide-react";
-import { useState } from "react";
+import { Menu, X, Wallet, LogOut } from "lucide-react";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
 
 export const Navbar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isWalletConnected, setIsWalletConnected] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{ email: string; name: string } | null>(null);
+
+  useEffect(() => {
+    const user = localStorage.getItem("currentUser");
+    if (user) {
+      setCurrentUser(JSON.parse(user));
+    }
+  }, [location]);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -18,6 +28,13 @@ export const Navbar = () => {
 
   const handleWalletToggle = () => {
     setIsWalletConnected(!isWalletConnected);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("currentUser");
+    setCurrentUser(null);
+    toast.success("Logged out successfully");
+    navigate("/");
   };
 
   return (
@@ -50,6 +67,25 @@ export const Navbar = () => {
               <Wallet className="mr-2 h-4 w-4" />
               {isWalletConnected ? "Wallet Connected" : "Connect Wallet"}
             </Button>
+            {currentUser ? (
+              <div className="flex items-center gap-3 ml-2">
+                <span className="text-sm text-muted-foreground">
+                  {currentUser.name}
+                </span>
+                <Button
+                  onClick={handleLogout}
+                  variant="ghost"
+                  size="icon"
+                  title="Logout"
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <Link to="/login" className="ml-2">
+                <Button variant="outline">Login</Button>
+              </Link>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -85,6 +121,30 @@ export const Navbar = () => {
               <Wallet className="mr-2 h-4 w-4" />
               {isWalletConnected ? "Wallet Connected" : "Connect Wallet"}
             </Button>
+            {currentUser ? (
+              <>
+                <div className="text-center text-sm text-muted-foreground py-2 border-t">
+                  Logged in as {currentUser.name}
+                </div>
+                <Button
+                  onClick={() => {
+                    handleLogout();
+                    setIsMenuOpen(false);
+                  }}
+                  variant="outline"
+                  className="w-full justify-start"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
+                </Button>
+              </>
+            ) : (
+              <Link to="/login" onClick={() => setIsMenuOpen(false)}>
+                <Button variant="outline" className="w-full justify-start">
+                  Login
+                </Button>
+              </Link>
+            )}
           </div>
         )}
       </div>
