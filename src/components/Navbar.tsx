@@ -1,18 +1,26 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Wallet } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Menu, X, Wallet, LogOut } from "lucide-react";
+import { useState } from "react";
 import { createWalletClient, custom } from "viem";
 import { sepolia } from "viem/chains";
 
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
+}
+
 export const Navbar = () => {
   const location = useLocation();
-  const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isWalletConnected, setIsWalletConnected] = useState(false);
   const [address, setAddress] = useState("");
 
-  const isActive = (path) => location.pathname === path;
+  // Temporary auth simulation (no crash)
+  const [currentUser, setCurrentUser] = useState<{ name: string } | null>(null);
+
+  const isActive = (path: string) => location.pathname === path;
 
   const navLinks = [
     { path: "/", label: "Home" },
@@ -21,24 +29,31 @@ export const Navbar = () => {
   ];
 
   const connectWallet = async () => {
-  if (!window.ethereum) {
-    alert("Please install MetaMask!");
-    return;
-  }
+    if (!window.ethereum) {
+      alert("Please install MetaMask!");
+      return;
+    }
 
-  // Force MetaMask popup for connection
-  await window.ethereum.request({ method: "eth_requestAccounts" });
+    try {
+      await window.ethereum.request({ method: "eth_requestAccounts" });
 
-  const walletClient = createWalletClient({
-    chain: sepolia,
-    transport: custom(window.ethereum),
-  });
+      const walletClient = createWalletClient({
+        chain: sepolia,
+        transport: custom(window.ethereum),
+      });
 
-  const accounts = await walletClient.requestAddresses();
-  setAddress(accounts[0]);
-  setIsWalletConnected(true);
-};
+      const accounts = await walletClient.requestAddresses();
+      setAddress(accounts[0]);
+      setIsWalletConnected(true);
+    } catch (err) {
+      console.error("Wallet connection failed:", err);
+    }
+  };
 
+  const handleLogout = () => {
+    // Simulate logout (clear fake user)
+    setCurrentUser(null);
+  };
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
@@ -62,6 +77,7 @@ export const Navbar = () => {
                 </Button>
               </Link>
             ))}
+
             <Button
               onClick={connectWallet}
               variant={isWalletConnected ? "default" : "outline"}
@@ -72,6 +88,7 @@ export const Navbar = () => {
                 ? `Connected: ${address.slice(0, 6)}...${address.slice(-4)}`
                 : "Connect Wallet"}
             </Button>
+
             {currentUser ? (
               <div className="flex items-center gap-3 ml-2">
                 <span className="text-sm text-muted-foreground">
@@ -88,7 +105,12 @@ export const Navbar = () => {
               </div>
             ) : (
               <Link to="/login" className="ml-2">
-                <Button variant="outline">Login</Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrentUser({ name: "Demo User" })}
+                >
+                  Login
+                </Button>
               </Link>
             )}
           </div>
@@ -119,6 +141,7 @@ export const Navbar = () => {
                 </Button>
               </Link>
             ))}
+
             <Button
               onClick={() => {
                 connectWallet();
@@ -130,6 +153,7 @@ export const Navbar = () => {
               <Wallet className="mr-2 h-4 w-4" />
               {isWalletConnected ? "Wallet Connected" : "Connect Wallet"}
             </Button>
+
             {currentUser ? (
               <>
                 <div className="text-center text-sm text-muted-foreground py-2 border-t">
@@ -149,7 +173,11 @@ export const Navbar = () => {
               </>
             ) : (
               <Link to="/login" onClick={() => setIsMenuOpen(false)}>
-                <Button variant="outline" className="w-full justify-start">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => setCurrentUser({ name: "Demo User" })}
+                >
                   Login
                 </Button>
               </Link>
